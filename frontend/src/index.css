@@ -1,0 +1,153 @@
+/* frontend/src/index.css */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+  @apply bg-gray-100 p-1 rounded text-sm;
+}
+
+/* Özel Kaydırma Çubukları */
+.scrollbar-light::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-light::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+.scrollbar-light::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded;
+}
+
+.scrollbar-light::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}
+
+.scrollbar-dark::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-dark::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  @apply bg-gray-600 rounded;
+}
+
+.scrollbar-dark::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}
+
+/* Mesaj biçimlendirmeleri */
+.assistant-message p {
+  @apply mb-3;
+}
+
+.assistant-message ul, .assistant-message ol {
+  @apply pl-5 mb-3;
+}
+
+.assistant-message ul {
+  @apply list-disc;
+}
+
+.assistant-message ol {
+  @apply list-decimal;
+}
+
+.assistant-message h1, .assistant-message h2, .assistant-message h3, 
+.assistant-message h4, .assistant-message h5, .assistant-message h6 {
+  @apply font-bold mb-2 mt-4;
+}
+
+.assistant-message h1 {
+  @apply text-2xl;
+}
+
+.assistant-message h2 {
+  @apply text-xl;
+}
+
+.assistant-message h3 {
+  @apply text-lg;
+}
+
+.assistant-message h4 {
+  @apply text-base;
+}
+
+.assistant-message blockquote {
+  @apply border-l-4 border-gray-300 pl-3 py-1 italic my-3;
+}
+
+.dark .assistant-message blockquote {
+  @apply border-gray-600;
+}
+
+/* Hukuki içerik biçimlendirmeleri */
+.legal-content {
+  @apply space-y-4;
+}
+
+.legal-section-summary h3 {
+  @apply text-blue-600;
+}
+
+.dark .legal-section-summary h3 {
+  @apply text-blue-300;
+}
+
+.legal-section-citation {
+  @apply bg-blue-50 bg-opacity-50 rounded-md p-2;
+}
+
+.dark .legal-section-citation {
+  @apply bg-blue-900 bg-opacity-20;
+}
+
+.legal-section-cases {
+  @apply bg-amber-50 bg-opacity-50 rounded-md p-2;
+}
+
+.dark .legal-section-cases {
+  @apply bg-amber-900 bg-opacity-20;
+}
+
+.legal-section-practical {
+  @apply bg-green-50 bg-opacity-50 rounded-md p-2;
+}
+
+.dark .legal-section-practical {
+  @apply bg-green-900 bg-opacity-20;
+}
+
+/* Yasal referans vurgulamaları */
+.tbk-highlight {
+  @apply bg-amber-100 text-amber-800 px-1 rounded font-medium;
+}
+
+.dark .tbk-highlight {
+  @apply bg-amber-900 bg-opacity-40 text-amber-200;
+}
+
+.madde-highlight {
+  @apply bg-blue-100 text-blue-800 px-1 rounded font-medium;
+}
+
+.dark .madde-highlight {
+  @apply bg-blue-900 bg-opacity-40 text-blue-200;
+}
