@@ -5,6 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
 const chatRoutes = require('./routes/chat');
+const documentRoutes = require('./routes/documents');
 
 // Ortam değişkenlerini yükle
 dotenv.config();
@@ -20,6 +21,7 @@ app.use(express.json()); // JSON verilerini ayrıştırma
 
 // API rotaları
 app.use('/api', chatRoutes);
+app.use('/api/documents', documentRoutes);
 
 // Sağlık kontrolü
 app.get('/health', (req, res) => {

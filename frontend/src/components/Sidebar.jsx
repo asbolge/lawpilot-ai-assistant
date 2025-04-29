@@ -2,57 +2,108 @@
 
 import React, { useState } from 'react';
 import { useChatContext } from '../contexts/ChatContext';
+import DocumentUploader from './DocumentUploader';
+import DocumentList from './DocumentList';
 
 /**
- * Konuşma geçmişini gösteren kenar çubuğu bileşeni
+ * Sidebar bileşeni
  */
 function Sidebar() {
   const { 
     conversations, 
     currentConversation, 
+    startNewConversation, 
     switchConversation, 
     deleteConversation,
     renameConversation,
-    darkMode
+    darkMode,
+    documents
   } = useChatContext();
   
-  const [isEditing, setIsEditing] = useState(null);
-  const [editTitle, setEditTitle] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [editingConversationId, setEditingConversationId] = useState(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [showDocuments, setShowDocuments] = useState(false);
   
-  // Düzenleme modunu başlat
-  const startEditing = (conversation) => {
-    setIsEditing(conversation.id);
-    setEditTitle(conversation.title);
-  };
-  
-  // Başlık güncellemesini kaydet
-  const handleSaveEdit = (e) => {
-    e.preventDefault();
-    if (editTitle.trim() && isEditing) {
-      renameConversation(isEditing, editTitle);
-      setIsEditing(null);
-    }
-  };
-  
-  // Konuşma tarihini formatla
+  /**
+   * Tarih formatlar
+   * @param {string} dateString - ISO tarih formatı
+   * @returns {string} - Formatlanmış tarih
+   */
   const formatDate = (dateString) => {
     const date = new Date(dateString);
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    
+    // Bugün
+    if (date.toDateString() === now.toDateString()) {
+      return 'Bugün';
+    }
+    
+    // Dün
+    if (date.toDateString() === yesterday.toDateString()) {
+      return 'Dün';
+    }
+    
+    // Diğer günler
     return new Intl.DateTimeFormat('tr-TR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
+      day: 'numeric',
+      month: 'short'
     }).format(date);
   };
   
-  // Mobil ekranlarda kenar çubuğunu aç/kapat
+  /**
+   * Konuşma düzenleme modunu başlatır
+   * @param {string} id - Konuşma ID'si
+   * @param {string} title - Mevcut başlık
+   * @param {Event} e - Tıklama olayı
+   */
+  const startEditing = (id, title, e) => {
+    e.stopPropagation();
+    setEditingConversationId(id);
+    setEditingTitle(title);
+  };
+  
+  /**
+   * Konuşma başlığının düzenlenmesini kaydeder
+   * @param {Event} e - Form gönderme olayı
+   */
+  const saveEditing = (e) => {
+    e.preventDefault();
+    if (editingTitle.trim()) {
+      renameConversation(editingConversationId, editingTitle);
+    }
+    setEditingConversationId(null);
+  };
+  
+  /**
+   * Konuşmayı siler
+   * @param {string} id - Konuşma ID'si
+   * @param {Event} e - Tıklama olayı
+   */
+  const handleDelete = (id, e) => {
+    e.stopPropagation();
+    deleteConversation(id);
+  };
+  
+  /**
+   * Mobil menüyü açar/kapatır
+   */
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
+  };
+
+  /**
+   * İçerik sekmelerini değiştirir (Konuşmalar/Dokümanlar)
+   */
+  const toggleSection = () => {
+    setShowDocuments(!showDocuments);
   };
   
   return (
     <>
-      {/* Mobil ekranlarda açma/kapama butonu */}
+      {/* Mobil menü butonu */}
       <button
         className={`md:hidden fixed top-16 left-4 z-20 p-2 rounded-md ${
           darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'
@@ -75,6 +126,14 @@ function Sidebar() {
         </svg>
       </button>
       
+      {/* Mobil menü arkaplanı */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-10 bg-black bg-opacity-50"
+          onClick={toggleSidebar}
+        />
+      )}
+
       {/* Kenar çubuğu */}
       <aside className={`
         ${sidebarOpen ? 'block' : 'hidden'} 
@@ -84,7 +143,7 @@ function Sidebar() {
         border-r 
         ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}
         overflow-y-auto
-        z-10
+        z-20
         md:relative
         fixed
         top-0
@@ -94,143 +153,197 @@ function Sidebar() {
         md:pt-0
       `}>
         <div className="p-4">
-          <h2 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-            Konuşmalar
-          </h2>
+          {/* Yeni Konuşma butonu */}
+          <div className="mb-4">
+            <button
+              onClick={startNewConversation}
+              className={`w-full py-2 px-3 rounded-lg flex items-center justify-center ${
+                darkMode 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Yeni Konuşma
+            </button>
+          </div>
           
-          {conversations.length === 0 ? (
-            <div className={`text-center py-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              <p>Henüz bir konuşma bulunmuyor.</p>
-              <p className="text-sm mt-2">Yeni bir konuşma başlatmak için sağ üstteki butonu kullanabilirsiniz.</p>
+          {/* Sekmeler */}
+          <div className={`mb-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-300'}`}>
+            <div className="flex">
+              <button
+                onClick={() => setShowDocuments(false)}
+                className={`flex-1 py-2 px-3 text-sm font-medium border-b-2 transition-colors ${
+                  !showDocuments
+                    ? darkMode 
+                      ? 'border-blue-500 text-blue-400'
+                      : 'border-blue-500 text-blue-600'
+                    : darkMode
+                      ? 'border-transparent text-gray-400 hover:text-gray-300'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Konuşmalar
+              </button>
+              <button
+                onClick={() => setShowDocuments(true)}
+                className={`flex-1 py-2 px-3 text-sm font-medium border-b-2 transition-colors ${
+                  showDocuments
+                    ? darkMode 
+                      ? 'border-blue-500 text-blue-400'
+                      : 'border-blue-500 text-blue-600'
+                    : darkMode
+                      ? 'border-transparent text-gray-400 hover:text-gray-300'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Belgeler {documents.length > 0 && `(${documents.length})`}
+              </button>
             </div>
-          ) : (
-            <ul className="space-y-2">
-              {conversations.map((conversation) => (
-                <li key={conversation.id}>
-                  {isEditing === conversation.id ? (
-                    <form onSubmit={handleSaveEdit} className="flex items-center">
-                      <input
-                        type="text"
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        className={`flex-1 p-2 rounded-md border ${
-                          darkMode 
-                            ? 'bg-gray-700 border-gray-600 text-white' 
-                            : 'bg-white border-gray-300'
-                        }`}
-                        autoFocus
-                      />
-                      <button
-                        type="submit"
-                        className={`ml-2 p-1 rounded-md ${
-                          darkMode 
-                            ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-                            : 'bg-gray-100 hover:bg-gray-200'
-                        }`}
-                      >
-                        <svg 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          className="h-5 w-5" 
-                          fill="none" 
-                          viewBox="0 0 24 24" 
-                          stroke="currentColor"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M5 13l4 4L19 7" 
+          </div>
+          
+          {/* İçerik alanı */}
+          <div>
+            {showDocuments ? (
+              <div>
+                <DocumentUploader />
+                <DocumentList />
+              </div>
+            ) : (
+              conversations.length === 0 ? (
+                <div className={`text-center py-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <p>Henüz bir konuşma bulunmuyor.</p>
+                  <p className="text-sm mt-2">Yeni bir konuşma başlatmak için yukarıdaki butonu kullanabilirsiniz.</p>
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {conversations.map((conversation) => (
+                    <li key={conversation.id}>
+                      {editingConversationId === conversation.id ? (
+                        <form onSubmit={saveEditing} className="flex items-center">
+                          <input
+                            type="text"
+                            value={editingTitle}
+                            onChange={(e) => setEditingTitle(e.target.value)}
+                            className={`flex-1 p-2 rounded-md border ${
+                              darkMode 
+                                ? 'bg-gray-700 border-gray-600 text-white' 
+                                : 'bg-white border-gray-300'
+                            }`}
+                            autoFocus
                           />
-                        </svg>
-                      </button>
-                    </form>
-                  ) : (
-                    <div
-                      className={`flex items-center justify-between p-2 rounded-md cursor-pointer ${
-                        currentConversation.id === conversation.id
-                          ? darkMode 
-                            ? 'bg-gray-700 text-white'
-                            : 'bg-blue-50 text-blue-800'
-                          : darkMode 
-                            ? 'hover:bg-gray-700 text-gray-300'
-                            : 'hover:bg-gray-100 text-gray-800'
-                      }`}
-                      onClick={() => switchConversation(conversation.id)}
-                    >
-                      <div className="flex-1 truncate">
-                        <p className="font-medium">{conversation.title}</p>
-                        {conversation.createdAt && (
-                          <p className="text-xs opacity-70 mt-1">
-                            {formatDate(conversation.createdAt)}
-                          </p>
-                        )}
-                      </div>
-                      
-                      <div className="flex">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            startEditing(conversation);
-                          }}
-                          className={`p-1 rounded-md ${
-                            darkMode 
-                              ? 'hover:bg-gray-600 text-gray-300' 
-                              : 'hover:bg-gray-200 text-gray-600'
-                          }`}
-                          aria-label="Konuşma adını düzenle"
-                        >
-                          <svg 
-                            xmlns="http://www.w3.org/2000/svg" 
-                            className="h-4 w-4" 
-                            fill="none" 
-                            viewBox="0 0 24 24" 
-                            stroke="currentColor"
+                          <button
+                            type="submit"
+                            className={`ml-2 p-1 rounded-md ${
+                              darkMode 
+                                ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                                : 'bg-gray-100 hover:bg-gray-200'
+                            }`}
                           >
-                            <path 
-                              strokeLinecap="round" 
-                              strokeLinejoin="round" 
-                              strokeWidth={2} 
-                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" 
-                            />
-                          </svg>
-                        </button>
-                        
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm('Bu konuşmayı silmek istediğinize emin misiniz?')) {
-                              deleteConversation(conversation.id);
-                            }
-                          }}
-                          className={`p-1 rounded-md ml-1 ${
-                            darkMode 
-                              ? 'hover:bg-gray-600 text-gray-300' 
-                              : 'hover:bg-gray-200 text-gray-600'
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              className="h-5 w-5" 
+                              fill="none" 
+                              viewBox="0 0 24 24" 
+                              stroke="currentColor"
+                            >
+                              <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth={2} 
+                                d="M5 13l4 4L19 7" 
+                              />
+                            </svg>
+                          </button>
+                        </form>
+                      ) : (
+                        <div
+                          className={`flex items-center justify-between p-2 rounded-md cursor-pointer ${
+                            currentConversation && currentConversation.id === conversation.id
+                              ? darkMode 
+                                ? 'bg-gray-700 text-white'
+                                : 'bg-blue-50 text-blue-800'
+                              : darkMode 
+                                ? 'hover:bg-gray-700 text-gray-300'
+                                : 'hover:bg-gray-100 text-gray-800'
                           }`}
-                          aria-label="Konuşmayı sil"
+                          onClick={() => switchConversation(conversation.id)}
                         >
-                          <svg 
-                            xmlns="http://www.w3.org/2000/svg" 
-                            className="h-4 w-4" 
-                            fill="none" 
-                            viewBox="0 0 24 24" 
-                            stroke="currentColor"
-                          >
-                            <path 
-                              strokeLinecap="round" 
-                              strokeLinejoin="round" 
-                              strokeWidth={2} 
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+                          <div className="flex-1 truncate">
+                            <p className="font-medium">{conversation.title}</p>
+                            {conversation.createdAt && (
+                              <p className="text-xs opacity-70 mt-1">
+                                {formatDate(conversation.createdAt)}
+                              </p>
+                            )}
+                          </div>
+                          
+                          <div className="flex">
+                            <button
+                              onClick={(e) => startEditing(conversation.id, conversation.title, e)}
+                              className={`p-1 rounded-md ${
+                                darkMode 
+                                  ? 'hover:bg-gray-600 text-gray-300' 
+                                  : 'hover:bg-gray-200 text-gray-600'
+                              }`}
+                              aria-label="Konuşma adını düzenle"
+                            >
+                              <svg 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                className="h-4 w-4" 
+                                fill="none" 
+                                viewBox="0 0 24 24" 
+                                stroke="currentColor"
+                              >
+                                <path 
+                                  strokeLinecap="round" 
+                                  strokeLinejoin="round" 
+                                  strokeWidth={2} 
+                                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" 
+                                />
+                              </svg>
+                            </button>
+                            
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm('Bu konuşmayı silmek istediğinize emin misiniz?')) {
+                                  handleDelete(conversation.id, e);
+                                }
+                              }}
+                              className={`p-1 rounded-md ml-1 ${
+                                darkMode 
+                                  ? 'hover:bg-gray-600 text-gray-300' 
+                                  : 'hover:bg-gray-200 text-gray-600'
+                              }`}
+                              aria-label="Konuşmayı sil"
+                            >
+                              <svg 
+                                xmlns="http://www.w3.org/2000/svg" 
+                                className="h-4 w-4" 
+                                fill="none" 
+                                viewBox="0 0 24 24" 
+                                stroke="currentColor"
+                              >
+                                <path 
+                                  strokeLinecap="round" 
+                                  strokeLinejoin="round" 
+                                  strokeWidth={2} 
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )
+            )}
+          </div>
         </div>
       </aside>
     </>

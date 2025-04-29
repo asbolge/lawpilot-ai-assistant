@@ -9,9 +9,11 @@ import { useChatContext } from '../contexts/ChatContext';
  * @param {string} props.role - Mesaj rolü (user/assistant)
  * @param {string} props.content - Mesaj içeriği
  * @param {Array} props.legalReferences - Yasal referanslar
+ * @param {boolean} props.documentContext - Doküman bağlamı var mı?
+ * @param {string} props.documentName - Doküman adı
  * @param {boolean} props.error - Hata durumu
  */
-function Message({ role, content, legalReferences = [], error = false }) {
+function Message({ role, content, legalReferences = [], documentContext = false, documentName = '', error = false }) {
   const { showLegalReferenceDetails, darkMode } = useChatContext();
   
   /**
@@ -145,6 +147,21 @@ function Message({ role, content, legalReferences = [], error = false }) {
         {role === 'assistant' && (
           <div className={`font-bold mb-1 ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
             Hukuki Asistan
+          </div>
+        )}
+        
+        {/* Doküman bağlamı var ise göster */}
+        {documentContext && documentName && (
+          <div className={`text-xs mb-2 ${
+            role === 'user'
+              ? darkMode
+                ? 'bg-blue-700 text-blue-200'
+                : 'bg-blue-200 text-blue-800'
+              : darkMode
+                ? 'bg-gray-800 text-gray-400'
+                : 'bg-gray-200 text-gray-700'
+          } py-1 px-2 rounded-full inline-block`}>
+            <span role="img" aria-label="document">📄</span> {documentName}
           </div>
         )}
         

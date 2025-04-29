@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Message from './Message';
 import LoadingIndicator from './LoadingIndicator';
 import LegalReferenceModal from './LegalReferenceModal';
+import DocumentView from './DocumentView';
 import { useChatContext } from '../contexts/ChatContext';
 
 /**
@@ -18,7 +19,8 @@ function ChatContainer() {
     referenceData, 
     referenceLoading, 
     closeLegalReferenceModal,
-    darkMode
+    darkMode,
+    documentView
   } = useChatContext();
   
   const [inputText, setInputText] = useState('');
@@ -39,6 +41,15 @@ function ChatContainer() {
       setInputText('');
     }
   };
+  
+  // Doküman görünümünü aktif ise onu göster
+  if (documentView) {
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden p-2">
+        <DocumentView />
+      </div>
+    );
+  }
   
   return (
     <div className={`flex-1 flex flex-col overflow-hidden ${
@@ -68,6 +79,17 @@ function ChatContainer() {
                 <li>"Boşanma davası açmak için hangi belgelere ihtiyaç var?"</li>
               </ul>
             </div>
+            <div className={`mt-4 ${darkMode ? 'bg-gray-700' : 'bg-green-50'} p-4 rounded-lg`}>
+              <h3 className={`font-medium ${darkMode ? 'text-green-300' : 'text-green-700'} mb-2`}>
+                Yeni Özellik: Belge Analizi
+              </h3>
+              <p className={`${darkMode ? 'text-gray-300' : 'text-green-600'} text-sm mb-2`}>
+                Artık PDF, Word ve resim formatında belgeler yükleyebilir ve bu belgeler hakkında sorular sorabilirsiniz.
+              </p>
+              <p className={`${darkMode ? 'text-gray-400' : 'text-green-700'} text-sm`}>
+                Sol menüden "Belgeler" sekmesine geçerek belge yüklemeyi deneyebilirsiniz.
+              </p>
+            </div>
           </div>
         </div>
       ) : (
@@ -82,6 +104,8 @@ function ChatContainer() {
               role={message.role}
               content={message.content}
               legalReferences={message.legalReferences || []}
+              documentContext={message.documentContext}
+              documentName={message.documentName}
               error={message.error}
             />
           ))}
@@ -112,7 +136,7 @@ function ChatContainer() {
             type="submit"
             disabled={!inputText.trim() || loading}
             className={`px-4 py-2 rounded-r-lg ${
-              loading
+              loading || !inputText.trim()
                 ? darkMode 
                   ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
                   : 'bg-blue-300 text-white cursor-not-allowed'
