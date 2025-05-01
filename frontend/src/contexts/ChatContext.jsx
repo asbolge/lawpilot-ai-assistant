@@ -7,7 +7,10 @@ import {
   uploadDocument,
   getDocuments,
   getDocument,
-  askDocumentQuestion
+  askDocumentQuestion,
+  createPetition as apiCreatePetition,
+  getPetitions as apiGetPetitions,
+  downloadPetition as apiDownloadPetition
 } from '../utils/api';
 
 // Chat Context oluştur
@@ -32,17 +35,20 @@ export const ChatProvider = ({ children }) => {
     messages: [],
     history: []
   });
-  const [activeReferenceModal, setActiveReferenceModal] = useState(null);
-  const [referenceData, setReferenceData] = useState(null);
-  const [referenceLoading, setReferenceLoading] = useState(false);
   
   // Doküman state tanımlamaları
   const [documents, setDocuments] = useState([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [documentView, setDocumentView] = useState(false); // Doküman görünümü aktif mi?
+  
+  // Dilekçe state tanımlamaları
+  const [petitions, setPetitions] = useState([]);
+  const [petitionLoading, setPetitionLoading] = useState(false);
+  const [selectedPetition, setSelectedPetition] = useState(null);
+  const [petitionView, setPetitionView] = useState(false); // Dilekçe görünümü aktif mi?
 
-  // Local Storage'dan konuşmaları yükle
+  // Local Storage'dan verileri yükle
   useEffect(() => {
     const savedConversations = localStorage.getItem('hukuki-asistan-conversations');
     const savedDarkMode = localStorage.getItem('hukuki-asistan-dark-mode');
@@ -73,6 +79,9 @@ export const ChatProvider = ({ children }) => {
     
     // Dokümanları yükle
     loadDocuments();
+    
+    // Dilekçeleri yükle
+    loadPetitions();
   }, []);
 
   // Konuşmaları Local Storage'a kaydet
@@ -98,6 +107,21 @@ export const ChatProvider = ({ children }) => {
     } catch (error) {
       console.error('Dokümanlar yüklenirken hata:', error);
       setDocsLoading(false);
+    }
+  };
+
+  /**
+   * Dilekçeleri API'den yükler
+   */
+  const loadPetitions = async () => {
+    try {
+      setPetitionLoading(true);
+      const petitionsData = await apiGetPetitions();
+      setPetitions(petitionsData);
+      setPetitionLoading(false);
+    } catch (error) {
+      console.error('Dilekçeler yüklenirken hata:', error);
+      setPetitionLoading(false);
     }
   };
 
@@ -134,6 +158,52 @@ export const ChatProvider = ({ children }) => {
       console.error('Doküman detayları alınırken hata:', error);
       setDocsLoading(false);
     }
+  };
+
+  /**
+   * Bir dilekçe oluşturur
+   * @param {Object} petitionData - Dilekçe verileri
+   */
+  const createPetition = async (petitionData) => {
+    try {
+      setPetitionLoading(true);
+      const result = await apiCreatePetition(petitionData);
+      setPetitions([result.petition, ...petitions]);
+      setPetitionLoading(false);
+      return result.petition;
+    } catch (error) {
+      console.error('Dilekçe oluşturulurken hata:', error);
+      setPetitionLoading(false);
+      throw error;
+    }
+  };
+
+  /**
+   * Bir dilekçeyi görüntüler
+   * @param {string} petitionId - Dilekçe ID
+   */
+  const viewPetition = async (petitionId) => {
+    try {
+      // Dilekçeyi görüntüle - burada dilekçe içeriğini gösteren bir modal açılabilir
+      // Veya PDF görüntüleyici kullanılabilir
+      window.open(`/api/petitions/${petitionId}/download`, '_blank');
+    } catch (error) {
+      console.error('Dilekçe görüntülenirken hata:', error);
+    }
+  };
+
+  /**
+   * Bir dilekçeyi indirir
+   * @param {string} petitionId - Dilekçe ID
+   */
+  const downloadPetition = (petitionId) => {
+    const link = document.createElement('a');
+    link.href = `/api/petitions/${petitionId}/download`;
+    link.download = `dilekce-${petitionId}.pdf`;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   /**
@@ -203,26 +273,24 @@ export const ChatProvider = ({ children }) => {
       );
       
       setConversations(updatedConversations);
+      setLoading(false);
     } catch (error) {
-      console.error('Belgeye soru sorulurken hata:', error);
+      console.error('Belgeye soru sorma hatası:', error);
       
-      // Hata mesajını ekle
+      // Hata mesajı ekle
       const errorMessage = { 
         role: 'assistant', 
-        content: 'Belgeye soru sorulurken bir hata oluştu. Lütfen tekrar deneyin.',
-        error: true,
-        documentContext: true,
-        documentId: docId
+        content: 'Üzgünüm, sorunuza cevap verirken bir hata oluştu. Lütfen tekrar deneyin.',
+        isError: true
       };
       
       setMessages([...updatedMessages, errorMessage]);
-    } finally {
       setLoading(false);
     }
   };
 
   /**
-   * Doküman görünümünü kapatır ve normal sohbete döner
+   * Doküman görünümünü kapatır
    */
   const closeDocumentView = () => {
     setDocumentView(false);
@@ -230,52 +298,67 @@ export const ChatProvider = ({ children }) => {
   };
 
   /**
-   * Yeni bir konuşma başlatır
+   * Dilekçe görünümünü kapatır
+   */
+  const closePetitionView = () => {
+    setPetitionView(false);
+    setSelectedPetition(null);
+  };
+
+  /**
+   * Yeni konuşma başlatır
    */
   const startNewConversation = () => {
-    const newId = Date.now().toString();
+    // Eğer mevcut konuşmada mesaj varsa ve henüz kaydedilmemişse, onu conversations listesine ekle
+    if (currentConversation.messages.length > 0) {
+      // Id değeri 'default' ise ve konuşmalar listesinde bu konuşma yoksa ekle
+      if (currentConversation.id === 'default' || !conversations.some(conv => conv.id === currentConversation.id)) {
+        const updatedConversation = {
+          ...currentConversation,
+          id: currentConversation.id === 'default' ? Date.now().toString() : currentConversation.id
+        };
+        setConversations([updatedConversation, ...conversations]);
+      }
+    }
+    
+    // Yeni bir konuşma oluştur
     const newConversation = {
-      id: newId,
+      id: 'default', // Geçici id, ilk mesaj gönderildiğinde değişecek
       title: 'Yeni Konuşma',
       messages: [],
       history: [],
       createdAt: new Date().toISOString()
     };
     
-    setConversations([newConversation, ...conversations]);
     setCurrentConversation(newConversation);
     setMessages([]);
-    setDocumentView(false);
-    setSelectedDocument(null);
   };
 
   /**
-   * Bir konuşmayı aktif hale getirir
-   * @param {string} conversationId - Konuşma ID'si
+   * Belirli bir konuşmaya geçiş yapar
+   * @param {string} conversationId - Konuşma ID
    */
   const switchConversation = (conversationId) => {
-    const selectedConversation = conversations.find(conv => conv.id === conversationId);
-    if (selectedConversation) {
-      setCurrentConversation(selectedConversation);
-      setMessages(selectedConversation.messages);
-      setDocumentView(false);
-      setSelectedDocument(null);
+    const conversation = conversations.find(conv => conv.id === conversationId);
+    if (conversation) {
+      setCurrentConversation(conversation);
+      setMessages(conversation.messages);
     }
   };
 
   /**
-   * Bir konuşmayı kaldırır
-   * @param {string} conversationId - Konuşma ID'si
+   * Bir konuşmayı siler
+   * @param {string} conversationId - Konuşma ID
    */
   const deleteConversation = (conversationId) => {
-    const updatedConversations = conversations.filter(conv => conv.id !== conversationId);
-    setConversations(updatedConversations);
+    // Konuşmayı sil
+    const newConversations = conversations.filter(conv => conv.id !== conversationId);
+    setConversations(newConversations);
     
-    // Eğer aktif konuşma silindiyse yeni bir konuşma başlat
+    // Eğer aktif konuşma siliniyorsa, başka bir konuşmaya geç
     if (currentConversation.id === conversationId) {
-      if (updatedConversations.length > 0) {
-        setCurrentConversation(updatedConversations[0]);
-        setMessages(updatedConversations[0].messages);
+      if (newConversations.length > 0) {
+        switchConversation(newConversations[0].id);
       } else {
         startNewConversation();
       }
@@ -283,44 +366,54 @@ export const ChatProvider = ({ children }) => {
   };
 
   /**
-   * Bir konuşmanın başlığını günceller
-   * @param {string} conversationId - Konuşma ID'si
+   * Bir konuşmanın başlığını değiştirir
+   * @param {string} conversationId - Konuşma ID
    * @param {string} newTitle - Yeni başlık
    */
   const renameConversation = (conversationId, newTitle) => {
+    // Konuşma başlığını değiştir
     const updatedConversations = conversations.map(conv => 
       conv.id === conversationId ? { ...conv, title: newTitle } : conv
     );
     
     setConversations(updatedConversations);
     
+    // Eğer aktif konuşma yeniden adlandırılıyorsa, aktif konuşmayı da güncelle
     if (currentConversation.id === conversationId) {
       setCurrentConversation({ ...currentConversation, title: newTitle });
     }
   };
 
   /**
-   * Kullanıcı mesajını gönderir ve API yanıtını alır
-   * @param {string} message - Kullanıcı mesajı
+   * Mesaj gönderir ve yanıt alır
+   * @param {string} message - Gönderilecek mesaj
    */
   const handleSendMessage = async (message) => {
     if (!message.trim() || loading) return;
     
     setLoading(true);
     
-    // Eğer currentConversation.id 'default' ise önce yeni bir konuşma oluştur
-    if (currentConversation.id === 'default') {
-      const newId = Date.now().toString();
+    // Eğer aktif konuşma yoksa veya mevcut konuşma "Yeni Konuşma" ise ve henüz mesaj yoksa
+    // otomatik olarak yeni bir konuşma oluştur
+    let conversationId = currentConversation.id;
+    let currentHistory = currentConversation.history;
+    let updatedConversations = [...conversations];
+    
+    // İlk sohbet için yeni bir konuşma oluştur
+    if (conversations.length === 0 || (currentConversation.messages.length === 0 && currentConversation.id === 'default')) {
       const newConversation = {
-        id: newId,
-        title: 'Yeni Konuşma',
+        id: Date.now().toString(),
+        title: truncateText(message, 30),
         messages: [],
         history: [],
         createdAt: new Date().toISOString()
       };
       
+      conversationId = newConversation.id;
+      currentHistory = [];
+      updatedConversations = [newConversation, ...conversations];
+      setConversations(updatedConversations);
       setCurrentConversation(newConversation);
-      setConversations(prev => [newConversation, ...prev]);
     }
     
     // Kullanıcı mesajını ekle
@@ -330,13 +423,16 @@ export const ChatProvider = ({ children }) => {
     
     try {
       // API'ye gönder
-      const response = await sendMessage(message, currentConversation.history);
+      const response = await sendMessage(
+        message, 
+        currentHistory
+      );
       
       // Asistan yanıtını ekle
       const assistantMessage = { 
         role: 'assistant', 
         content: response.text,
-        legalReferences: response.legalReferences || []
+        legalReferences: response.legalReferences
       };
       
       const newMessages = [...updatedMessages, assistantMessage];
@@ -348,124 +444,97 @@ export const ChatProvider = ({ children }) => {
         assistantResponse: response.text
       };
       
-      const updatedHistory = [...currentConversation.history, newHistoryItem];
+      const updatedHistory = [...currentHistory, newHistoryItem];
       
       // Aktif konuşmayı güncelle
       const updatedCurrentConversation = {
         ...currentConversation,
+        id: conversationId,
         messages: newMessages,
         history: updatedHistory,
-        title: currentConversation.title === 'Yeni Konuşma' && updatedHistory.length === 1 
-          ? truncateText(message, 30) 
-          : currentConversation.title
+        title: currentConversation.title === 'Yeni Konuşma' ? truncateText(message, 30) : currentConversation.title
       };
       
       setCurrentConversation(updatedCurrentConversation);
       
-      // Tüm konuşmaları güncelle (eğer konuşma listede yoksa ekle, varsa güncelle)
-      const conversationExists = conversations.some(conv => conv.id === currentConversation.id);
+      // Tüm konuşmaları güncelle
+      const finalConversations = updatedConversations.map(conv => 
+        conv.id === conversationId ? updatedCurrentConversation : conv
+      );
       
-      if (conversationExists) {
-        const updatedConversations = conversations.map(conv => 
-          conv.id === currentConversation.id ? updatedCurrentConversation : conv
-        );
-        setConversations(updatedConversations);
-      } else {
-        setConversations([updatedCurrentConversation, ...conversations]);
+      // Eğer bizim yeni oluşturduğumuz bir konuşma varsa ve listede yoksa ekle
+      if (!finalConversations.some(conv => conv.id === conversationId)) {
+        finalConversations.unshift(updatedCurrentConversation);
       }
-    } catch (error) {
-      console.error('Mesaj gönderilirken hata:', error);
       
-      // Hata mesajını ekle
+      setConversations(finalConversations);
+      setLoading(false);
+    } catch (error) {
+      console.error('Mesaj gönderme hatası:', error);
+      
+      // Hata mesajı ekle
       const errorMessage = { 
         role: 'assistant', 
-        content: 'Mesajınız işlenirken bir hata oluştu. Lütfen tekrar deneyin.',
-        error: true
+        content: 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin veya daha sonra tekrar deneyin.',
+        isError: true
       };
       
       setMessages([...updatedMessages, errorMessage]);
-    } finally {
       setLoading(false);
     }
   };
 
   /**
-   * Yasal referans detaylarını gösterir
-   * @param {string} reference - Yasal referans
-   */
-  const showLegalReferenceDetails = async (reference) => {
-    try {
-      setActiveReferenceModal(reference);
-      setReferenceLoading(true);
-      
-      const data = await fetchLegalReferenceDetails(reference);
-      setReferenceData(data);
-      
-      setReferenceLoading(false);
-    } catch (error) {
-      console.error('Referans detayları alınırken hata:', error);
-      setReferenceData({ error: true, message: 'Referans detayları alınamadı.' });
-      setReferenceLoading(false);
-    }
-  };
-
-  /**
-   * Yasal referans modalını kapatır
-   */
-  const closeLegalReferenceModal = () => {
-    setActiveReferenceModal(null);
-    setReferenceData(null);
-  };
-
-  /**
-   * Koyu/açık tema geçişini yapar
+   * Koyu/açık tema modunu değiştirir
    */
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
   };
 
   /**
-   * Metni belirli bir uzunlukta kısaltır
+   * Metni kısaltır
    * @param {string} text - Kısaltılacak metin
-   * @param {number} maxLength - Maksimum karakter sayısı
+   * @param {number} maxLength - Maksimum uzunluk
    * @returns {string} - Kısaltılmış metin
    */
   const truncateText = (text, maxLength) => {
-    return text.length > maxLength
-      ? text.substring(0, maxLength - 3) + '...'
-      : text;
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
+  // Context değerlerini sağla
+  const contextValue = {
+    messages,
+    loading,
+    conversations,
+    currentConversation,
+    darkMode,
+    documents,
+    docsLoading,
+    selectedDocument,
+    documentView,
+    petitions,
+    petitionLoading,
+    selectedPetition,
+    petitionView,
+    handleSendMessage,
+    startNewConversation,
+    switchConversation,
+    deleteConversation,
+    renameConversation,
+    toggleDarkMode,
+    handleDocumentUpload,
+    selectDocument,
+    closeDocumentView,
+    handleDocumentQuestion,
+    createPetition,
+    viewPetition,
+    downloadPetition,
+    closePetitionView
   };
 
   return (
-    <ChatContext.Provider
-      value={{
-        messages,
-        loading,
-        conversations,
-        currentConversation,
-        activeReferenceModal,
-        referenceData,
-        referenceLoading,
-        darkMode,
-        documents,
-        docsLoading,
-        selectedDocument,
-        documentView,
-        handleSendMessage,
-        startNewConversation,
-        switchConversation,
-        deleteConversation,
-        renameConversation,
-        showLegalReferenceDetails,
-        closeLegalReferenceModal,
-        toggleDarkMode,
-        handleDocumentUpload,
-        loadDocuments,
-        selectDocument,
-        handleDocumentQuestion,
-        closeDocumentView
-      }}
-    >
+    <ChatContext.Provider value={contextValue}>
       {children}
     </ChatContext.Provider>
   );

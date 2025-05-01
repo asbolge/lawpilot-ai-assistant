@@ -14,6 +14,16 @@ import { useChatContext } from '../contexts/ChatContext';
 function LegalReferenceModal({ reference, data, loading, onClose }) {
   const { darkMode } = useChatContext();
   
+  /**
+   * Temiz referans başlığı oluşturur 
+   * @param {string} ref - Referans metni
+   * @returns {string} - Formatlı başlık
+   */
+  const formatReferenceTitle = (ref) => {
+    // "TMK Madde 161" formatına dönüştür, yıldız sembollerini kaldır
+    return ref.replace(/\*\*/g, '').trim();
+  };
+  
   return (
     <div 
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
@@ -29,7 +39,7 @@ function LegalReferenceModal({ reference, data, loading, onClose }) {
         <div className={`border-b px-4 py-3 flex justify-between items-center ${
           darkMode ? 'border-gray-700' : 'border-gray-200'
         }`}>
-          <h3 className="font-bold">{reference}</h3>
+          <h3 className="font-bold">{formatReferenceTitle(reference)}</h3>
           <button 
             onClick={onClose} 
             className={`text-gray-500 hover:text-gray-700 ${

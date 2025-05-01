@@ -31,6 +31,16 @@ function enrichPrompt(userQuestion, conversationHistory = []) {
     2. İlgili kanun maddeleri, yönetmelikler veya genelgelerden alıntılar yap
     3. Mümkünse Yargıtay/Danıştay gibi yüksek mahkemelerin konuyla ilgili emsal kararlarına atıf yap
     4. Yanıtı hem hukuki açıdan doğru hem de anlaşılır bir dille aktarmaya özen göster
+    
+    ### Kanun Madde Referansları:
+    1. Bahsettiğin TÜM kanun maddelerini aşağıdaki formatta belirt:
+       - Tam format şöyle olmalı: "6563 sayılı Elektronik Ticaretin Düzenlenmesi Hakkında Kanun Madde 5"
+       - Her zaman kanun numarasını, tam adını ve madde numarasını içerecek şekilde yaz
+       - Yazım birliği için "sayılı" kelimesini küçük harfle yaz
+       - Alıntı yaparken doğrudan bu formatta kullan
+       - Herhangi bir metin biçimlendirme (yıldız, alt çizgi, tırnak işareti) KULLANMA
+    2. Alıntı yaparken mutlaka doğru madde numarasını belirt
+    3. Yanıtın içerisinde geçen tüm kanun maddeleri için yukarıdaki standart gösterimi kullan
     `;
     
     // Eğer pratik bilgi sorusu ise yanıt sıralamasını değiştir
@@ -42,16 +52,16 @@ function enrichPrompt(userQuestion, conversationHistory = []) {
     1. Önce kullanıcının doğrudan sorduğu soruya net ve pratik bir cevap ver (gerekli belgeler, adımlar, prosedürler)
     2. Sonra yasal dayanakları ve detayları açıkla
     
-    **Uygulamadaki Pratik Yansıması:**
+    Uygulamadaki Pratik Yansıması:
     [Kullanıcının sorduğu pratik soruya doğrudan cevap ver, gerekli belgeleri listele, prosedürü açıkla]
     
-    **İlgili Yasal Düzenleme/Hüküm Özeti:**
+    İlgili Yasal Düzenleme/Hüküm Özeti:
     [İlgili yasal düzenlemeyi sonra açıkla]
     
-    **Doğrudan İlişkili Madde veya Hüküm Alıntıları:**
+    Doğrudan İlişkili Madde veya Hüküm Alıntıları:
     [Kanun maddelerini alıntıla]
     
-    **İlgili Yargı Kararları veya İçtihatlar:**
+    İlgili Yargı Kararları veya İçtihatlar:
     [Varsa içtihatları belirt]
     `;
     } else {
@@ -59,22 +69,50 @@ function enrichPrompt(userQuestion, conversationHistory = []) {
     ### Yanıt Biçimlendirme:
     Cevabı aşağıdaki bölümlere ayırarak yanıtla:
     
-    **İlgili Yasal Düzenleme/Hüküm Özeti:**
+    İlgili Yasal Düzenleme/Hüküm Özeti:
     [İlgili yasal düzenlemeyi ve ana hükümleri özet olarak yaz]
     
-    **Doğrudan İlişkili Madde veya Hüküm Alıntıları:**
-    [İlgili kanun maddelerini veya hükümleri tırnak içinde doğrudan alıntıla]
+    Doğrudan İlişkili Madde veya Hüküm Alıntıları:
+    [İlgili kanun maddelerini veya hükümleri doğrudan alıntıla]
     
-    **İlgili Yargı Kararları veya İçtihatlar:**
+    İlgili Yargı Kararları veya İçtihatlar:
     [Varsa ilgili yargı kararları veya içtihatları belirt]
     
-    **Uygulamadaki Pratik Yansıması:**
+    Uygulamadaki Pratik Yansıması:
     [Bu hukuki düzenlemelerin pratik etkisini açıkla]
     `;
     }
     
     enrichedQuestion += `
-    NOT: Yanıtını okunabilir ve düzenli bir formatta yap. Tüm kanun maddelerini ve yasal referansları belirgin şekilde vurgula. Cevabı çok uzun ve karmaşık yapmaktan kaçın.
+    ### Yanıt Yapısı:
+    Yanıtın sonunda, bahsettiğin tüm kanun maddelerini aşağıdaki JSON formatında listele (bu liste kullanıcıya gösterilmeyecek, sistem tarafından kullanılacaktır):
+    
+    \`\`\`json
+    {
+      "legalReferences": [
+        {
+          "number": "6563", 
+          "name": "Elektronik Ticaretin Düzenlenmesi Hakkında Kanun", 
+          "article": "5", 
+          "text": "6563 sayılı Elektronik Ticaretin Düzenlenmesi Hakkında Kanun Madde 5" 
+        },
+        {
+          "number": "4857", 
+          "name": "İş Kanunu", 
+          "article": "18",
+          "text": "4857 sayılı İş Kanunu Madde 18"
+        }
+      ]
+    }
+    \`\`\`
+    
+    NOT 1: Yukarıdaki JSON formatına MUTLAKA uy. Her kanun maddesi için "number" (kanun numarası), "name" (tam adı), "article" (madde numarası) ve "text" (tam gösterim metni) bilgilerini içermelidir.
+    NOT 2: Eğer bir bilgi yoksa (örneğin kısaltma), o alanı JSON'da dahil etme.
+    NOT 3: Yanıtında bahsettiğin TÜM kanun maddelerini bu JSON'a eklediğinden emin ol.
+    NOT 4: JSON formatı çıktısı yanıtından sonra, üç backtick içinde olmalıdır.
+    NOT 5: "text" alanında asla yıldız, alt çizgi, tırnak işareti gibi biçimlendirmeler kullanma.
+    
+    Yanıtını okunabilir ve düzenli bir formatta yap. Tüm kanun maddelerini ve yasal referansları belirgin şekilde vurgula. Cevabı çok uzun ve karmaşık yapmaktan kaçın.
     `;
     
     return enrichedQuestion;
@@ -164,26 +202,74 @@ function enrichPrompt(userQuestion, conversationHistory = []) {
   function extractLegalReferences(text) {
     const references = [];
     
-    // Kanun numarası tespiti (örn: 4857 sayılı kanun)
-    const lawNumberPattern = /(\d{3,5})\s*say[ıi]l[ıi]\s*(kanun|yasa|torba|[İi]ş\s*Kanunu|[Cc]eza\s*Kanunu|[Bb]orçlar\s*Kanunu)/gi;
+    // Tam kanun ismi ve madde referansları - öncelikli olarak bunları yakala
+    const fullLawArticlePattern = /(\d{3,5})\s*say[ıi]l[ıi]\s*(.*?)\s*[Kk]anunu['nu]*\s*(?:[Mm]adde|[Mm]d\.?|[Mm]\.?\s*)(\d{1,3})/gi;
     let match;
+    while ((match = fullLawArticlePattern.exec(text)) !== null) {
+      // Standardize edilmiş format 
+      references.push(`${match[1]} sayılı ${match[2].trim()} Kanunu Madde ${match[3]}`);
+    }
+    
+    // Kanun numarası tespiti (Tam madde referansı olmadan)
+    const lawNumberPattern = /(\d{3,5})\s*say[ıi]l[ıi]\s*(kanun|yasa|torba|[İi]ş\s*Kanunu|[Cc]eza\s*Kanunu|[Bb]orçlar\s*Kanunu|[İiI]dari\s*[Yy]argılama\s*[Uu]sulü\s*Kanunu|[Tt]ürk\s*[Mm]edeni\s*Kanunu)/gi;
     while ((match = lawNumberPattern.exec(text)) !== null) {
-      references.push(`${match[1]} Sayılı ${match[2].charAt(0).toUpperCase() + match[2].slice(1)}`);
+      // Önceki metni kontrol et, eğer zaten maddeyle birlikte yakalanmadıysa ekle
+      const prevText = text.substring(Math.max(0, match.index - 50), match.index);
+      const nextText = text.substring(match.index, Math.min(text.length, match.index + 50));
+      
+      // Eğer tam kanun referansı içinde değilse ekle
+      if (!nextText.match(/\s+[Mm]adde\s+\d+/)) {
+        references.push(`${match[1]} Sayılı ${match[2].charAt(0).toUpperCase() + match[2].slice(1).trim()}`);
+      }
     }
     
     // Kanun kısaltmaları (TCK, CMK, vb.)
-    const codePattern = /(TCK|CMK|HMK|TMK|TTK|İİK|VUK|HUMK|SGK|İYUK|AYM|AYMK|TBK|KVK|KVKK|KHK)\b/g;
+    const codePattern = /(TCK|CMK|HMK|TMK|TTK|İİK|VUK|HUMK|SGK|İYUK|AYM|AYMK|TBK|KVK|KVKK|KHK|TKHK)\b/g;
     while ((match = codePattern.exec(text)) !== null) {
-      references.push(match[1]);
+      // Sonraki metni kontrol et, eğer maddeyle birlikte yakalanmadıysa ekle
+      const nextText = text.substring(match.index, Math.min(text.length, match.index + 30));
+      if (!nextText.match(/\s+[Mm]adde\s+\d+/)) {
+        references.push(match[1]);
+      }
     }
     
-    // Madde referansları
-    const articlePattern = /((madde|md\.|m\.)\s*(\d+))|((TCK|CMK|HMK|TMK|TTK|İİK|TBK)\s*\.?\s*(\d{1,3}))/gi;
+    // Kısaltmalı madde referansları (TCK Madde 112 gibi)
+    const codeArticlePattern = /(TCK|CMK|HMK|TMK|TTK|İİK|TBK|TKHK)\s*(?:[Mm]adde|[Mm]d\.?|[Mm]\.?)\s*(\d{1,3})/g;
+    while ((match = codeArticlePattern.exec(text)) !== null) {
+      references.push(`${match[1]} Madde ${match[2]}`);
+    }
+    
+    // Bağımsız madde referansları (metinde kanunsuz "Madde X" şeklinde geçenler)
+    const articlePattern = /(?:[Mm]adde|[Mm]d\.?|[Mm]\.?\s*)(\d{1,3})/g;
     while ((match = articlePattern.exec(text)) !== null) {
-      if (match[2]) {
-        references.push(`Madde ${match[3]}`);
-      } else if (match[5]) {
-        references.push(`${match[5]} Madde ${match[6]}`);
+      // Önceki ve sonraki metni kontrol et
+      const prevText = text.substring(Math.max(0, match.index - 100), match.index);
+      
+      // Eğer kanun ismi ya da kısaltması içeren bir madde referansı değilse
+      if (!(/\d{3,5}\s*say[ıi]l[ıi]/i.test(prevText) || 
+            /(TCK|CMK|HMK|TMK|TTK|İİK|TBK)[^\w]*$/i.test(prevText))) {
+        
+        // 80 karakter öncesinde ve Madde X sonrasında 80 karakter içinde kanun adı var mı kontrol et 
+        const contextText = text.substring(Math.max(0, match.index - 80), 
+                                           Math.min(text.length, match.index + match[0].length + 80));
+        
+        // Bilinen kanunları kontrol et
+        if (contextText.includes("İdari Yargılama Usulü") || contextText.includes("2577 sayılı")) {
+          references.push(`2577 sayılı İdari Yargılama Usulü Kanunu Madde ${match[1]}`);
+        } else if (contextText.includes("Türk Medeni") || contextText.includes("4721 sayılı")) {
+          references.push(`4721 sayılı Türk Medeni Kanunu Madde ${match[1]}`);
+        } else if (contextText.includes("Türk Borçlar") || contextText.includes("6098 sayılı")) {
+          references.push(`6098 sayılı Türk Borçlar Kanunu Madde ${match[1]}`);
+        } else if (contextText.includes("Türk Ceza") || contextText.includes("5237 sayılı")) {
+          references.push(`5237 sayılı Türk Ceza Kanunu Madde ${match[1]}`);
+        } else if (contextText.includes("İş Kanunu") || contextText.includes("4857 sayılı")) {
+          references.push(`4857 sayılı İş Kanunu Madde ${match[1]}`);
+        } else if (contextText.includes("Tüketicinin Korunması") || contextText.includes("6502 sayılı")) {
+          references.push(`6502 sayılı Tüketicinin Korunması Hakkında Kanun Madde ${match[1]}`);
+        } else {
+          // Referansı ekle
+          references.push(`Madde ${match[1]}`);
+        }
       }
     }
     
@@ -193,10 +279,51 @@ function enrichPrompt(userQuestion, conversationHistory = []) {
       references.push(`${match[1]} ${match[2]} ${match[6]}`);
     }
     
-    // Tekrarlayan referansları temizle
-    const uniqueReferences = [...new Set(references)];
+    // Tekrarlayan referansları temizle, benzersiz hale getir ve sırala
+    // Aynı kanunun farklı maddeleri için gruplandırma yap
+    const uniqueRefs = new Map();
     
-    return uniqueReferences;
+    references.forEach(ref => {
+      // Standardize et (büyük/küçük harf, fazla boşluk vb.)
+      const standardRef = ref.replace(/\s+/g, ' ').trim();
+      
+      // Referansı benzersiz şekilde sakla
+      if (!uniqueRefs.has(standardRef.toLowerCase())) {
+        uniqueRefs.set(standardRef.toLowerCase(), standardRef);
+      }
+    });
+    
+    // Sıralama için yardımcı fonksiyon
+    const sortRefs = (refs) => {
+      return refs.sort((a, b) => {
+        // Tam kanun ve madde referanslarını üstte göster
+        const aFullRef = /\d{3,5} sayılı .* Kanunu Madde \d+/.test(a);
+        const bFullRef = /\d{3,5} sayılı .* Kanunu Madde \d+/.test(b);
+        
+        if (aFullRef && !bFullRef) return -1;
+        if (!aFullRef && bFullRef) return 1;
+        
+        // Ardından kısaltma madde referanslarını göster
+        const aCodeRef = /(TCK|CMK|HMK|TMK|TTK|İİK|TBK) Madde \d+/.test(a);
+        const bCodeRef = /(TCK|CMK|HMK|TMK|TTK|İİK|TBK) Madde \d+/.test(b);
+        
+        if (aCodeRef && !bCodeRef) return -1;
+        if (!aCodeRef && bCodeRef) return 1;
+        
+        // Kanun referansları
+        const aLawRef = /\d{3,5} Sayılı/.test(a);
+        const bLawRef = /\d{3,5} Sayılı/.test(b);
+        
+        if (aLawRef && !bLawRef) return -1;
+        if (!aLawRef && bLawRef) return 1;
+        
+        // Alfabetik sırala
+        return a.localeCompare(b);
+      });
+    };
+    
+    // Benzersiz referansları sıralayarak döndür
+    return sortRefs([...uniqueRefs.values()]);
   }
   
   /**

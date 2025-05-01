@@ -4,35 +4,32 @@
  * API URL'i
  * .env dosyasından alınabilir, burada basitlik için sabit kullanıldı
  */
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_URL = process.env.REACT_APP_API_URL || '/api';
 
 /**
  * Kullanıcı mesajını API'ye gönderir ve yanıt alır
  * @param {string} message - Kullanıcı mesajı
- * @param {Array} conversationHistory - Konuşma geçmişi
+ * @param {Array} history - Konuşma geçmişi
  * @returns {Promise<Object>} - API yanıtı
  */
-export const sendMessage = async (message, conversationHistory = []) => {
+export const sendMessage = async (message, history = []) => {
   try {
     const response = await fetch(`${API_URL}/chat`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        message,
-        conversationHistory,
-      }),
+      body: JSON.stringify({ message, conversationHistory: history })
     });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'API istek hatası');
+      throw new Error(errorData.error || 'Mesaj gönderilirken bir hata oluştu');
     }
 
     return await response.json();
   } catch (error) {
-    console.error('API isteği başarısız:', error);
+    console.error('Mesaj gönderme hatası:', error);
     throw error;
   }
 };
@@ -44,17 +41,16 @@ export const sendMessage = async (message, conversationHistory = []) => {
  */
 export const fetchLegalReferenceDetails = async (reference) => {
   try {
-    const encodedReference = encodeURIComponent(reference);
-    const response = await fetch(`${API_URL}/legal-reference/${encodedReference}`);
-
+    const response = await fetch(`${API_URL}/legal-reference/${encodeURIComponent(reference)}`);
+    
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'API istek hatası');
+      throw new Error(errorData.error || 'Referans detayları alınamadı');
     }
-
+    
     return await response.json();
   } catch (error) {
-    console.error('Referans detayları alınamadı:', error);
+    console.error('Referans detayları alma hatası:', error);
     throw error;
   }
 };
@@ -71,17 +67,17 @@ export const uploadDocument = async (file) => {
     
     const response = await fetch(`${API_URL}/documents/upload`, {
       method: 'POST',
-      body: formData,
+      body: formData
     });
     
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'Doküman yükleme hatası');
+      throw new Error(errorData.error || 'Doküman yüklenirken bir hata oluştu');
     }
     
     return await response.json();
   } catch (error) {
-    console.error('Doküman yükleme başarısız:', error);
+    console.error('Doküman yükleme hatası:', error);
     throw error;
   }
 };
@@ -96,25 +92,25 @@ export const getDocuments = async () => {
     
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'Doküman listesi alınamadı');
+      throw new Error(errorData.error || 'Dokümanlar alınamadı');
     }
     
     const data = await response.json();
-    return data.documents;
+    return data.documents || [];
   } catch (error) {
-    console.error('Doküman listesi alınamadı:', error);
+    console.error('Dokümanları getirme hatası:', error);
     throw error;
   }
 };
 
 /**
  * Belirli bir dokümanı getirir
- * @param {string} docId - Doküman ID
+ * @param {string} id - Doküman ID
  * @returns {Promise<Object>} - Doküman bilgileri
  */
-export const getDocument = async (docId) => {
+export const getDocument = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/documents/${docId}`);
+    const response = await fetch(`${API_URL}/documents/${id}`);
     
     if (!response.ok) {
       const errorData = await response.json();
@@ -123,7 +119,7 @@ export const getDocument = async (docId) => {
     
     return await response.json();
   } catch (error) {
-    console.error('Doküman alınamadı:', error);
+    console.error('Doküman getirme hatası:', error);
     throw error;
   }
 };
@@ -139,19 +135,76 @@ export const askDocumentQuestion = async (docId, question) => {
     const response = await fetch(`${API_URL}/documents/${docId}/ask`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question })
     });
     
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'Soru cevaplanamadı');
+      throw new Error(errorData.error || 'Belgeye soru sorulurken bir hata oluştu');
     }
     
     return await response.json();
   } catch (error) {
-    console.error('Belgeye soru sorma başarısız:', error);
+    console.error('Belgeye soru sorma hatası:', error);
     throw error;
   }
+};
+
+/**
+ * Dilekçe oluşturma
+ * @param {Object} petitionData - Dilekçe verileri
+ * @returns {Promise<Object>} - Oluşturulan dilekçe bilgileri
+ */
+export const createPetition = async (petitionData) => {
+  try {
+    const response = await fetch(`${API_URL}/petitions/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(petitionData)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Dilekçe oluşturulurken bir hata oluştu');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Dilekçe oluşturma hatası:', error);
+    throw error;
+  }
+};
+
+/**
+ * Tüm dilekçeleri getir
+ * @returns {Promise<Array>} - Dilekçeler listesi
+ */
+export const getPetitions = async () => {
+  try {
+    const response = await fetch(`${API_URL}/petitions`);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Dilekçeler alınamadı');
+    }
+    
+    const data = await response.json();
+    return data.petitions || [];
+  } catch (error) {
+    console.error('Dilekçeleri getirme hatası:', error);
+    throw error;
+  }
+};
+
+/**
+ * Dilekçe indirme URL'ini oluştur
+ * @param {string} id - Dilekçe ID
+ * @returns {string} - İndirme URL'i
+ */
+export const downloadPetition = (id) => {
+  return `${API_URL}/petitions/${id}/download`;
 };

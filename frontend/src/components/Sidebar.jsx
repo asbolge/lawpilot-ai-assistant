@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useChatContext } from '../contexts/ChatContext';
 import DocumentUploader from './DocumentUploader';
 import DocumentList from './DocumentList';
+import PetitionForm from './PetitionForm';
 
 /**
  * Sidebar bileşeni
@@ -17,13 +18,14 @@ function Sidebar() {
     deleteConversation,
     renameConversation,
     darkMode,
-    documents
+    documents,
+    petitions
   } = useChatContext();
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingConversationId, setEditingConversationId] = useState(null);
   const [editingTitle, setEditingTitle] = useState('');
-  const [showDocuments, setShowDocuments] = useState(false);
+  const [activeTab, setActiveTab] = useState('conversations'); // 'conversations', 'documents', 'petitions'
   
   /**
    * Tarih formatlar
@@ -95,10 +97,11 @@ function Sidebar() {
   };
 
   /**
-   * İçerik sekmelerini değiştirir (Konuşmalar/Dokümanlar)
+   * İçerik sekmelerini değiştirir
+   * @param {string} tab - Sekme adı
    */
-  const toggleSection = () => {
-    setShowDocuments(!showDocuments);
+  const switchTab = (tab) => {
+    setActiveTab(tab);
   };
   
   return (
@@ -174,9 +177,9 @@ function Sidebar() {
           <div className={`mb-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-300'}`}>
             <div className="flex">
               <button
-                onClick={() => setShowDocuments(false)}
+                onClick={() => switchTab('conversations')}
                 className={`flex-1 py-2 px-3 text-sm font-medium border-b-2 transition-colors ${
-                  !showDocuments
+                  activeTab === 'conversations'
                     ? darkMode 
                       ? 'border-blue-500 text-blue-400'
                       : 'border-blue-500 text-blue-600'
@@ -188,9 +191,9 @@ function Sidebar() {
                 Konuşmalar
               </button>
               <button
-                onClick={() => setShowDocuments(true)}
+                onClick={() => switchTab('documents')}
                 className={`flex-1 py-2 px-3 text-sm font-medium border-b-2 transition-colors ${
-                  showDocuments
+                  activeTab === 'documents'
                     ? darkMode 
                       ? 'border-blue-500 text-blue-400'
                       : 'border-blue-500 text-blue-600'
@@ -201,17 +204,39 @@ function Sidebar() {
               >
                 Belgeler {documents.length > 0 && `(${documents.length})`}
               </button>
+              <button
+                onClick={() => switchTab('petitions')}
+                className={`flex-1 py-2 px-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'petitions'
+                    ? darkMode 
+                      ? 'border-blue-500 text-blue-400'
+                      : 'border-blue-500 text-blue-600'
+                    : darkMode
+                      ? 'border-transparent text-gray-400 hover:text-gray-300'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Dilekçeler {petitions.length > 0 && `(${petitions.length})`}
+              </button>
             </div>
           </div>
           
           {/* İçerik alanı */}
           <div>
-            {showDocuments ? (
+            {activeTab === 'documents' && (
               <div>
                 <DocumentUploader />
                 <DocumentList />
               </div>
-            ) : (
+            )}
+
+            {activeTab === 'petitions' && (
+              <div>
+                <PetitionForm />
+              </div>
+            )}
+            
+            {activeTab === 'conversations' && (
               conversations.length === 0 ? (
                 <div className={`text-center py-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                   <p>Henüz bir konuşma bulunmuyor.</p>
@@ -219,7 +244,9 @@ function Sidebar() {
                 </div>
               ) : (
                 <ul className="space-y-2">
-                  {conversations.map((conversation) => (
+                  {conversations
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))  // Konuşmaları oluşturulma tarihine göre sırala (en son en üstte)
+                    .map((conversation) => (
                     <li key={conversation.id}>
                       {editingConversationId === conversation.id ? (
                         <form onSubmit={saveEditing} className="flex items-center">

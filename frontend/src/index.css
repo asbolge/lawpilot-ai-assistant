@@ -151,3 +151,16 @@ code {
 .dark .madde-highlight {
   @apply bg-blue-900 bg-opacity-40 text-blue-200;
 }
+
+/* Liste öğeleri için stiller */
+.list-item {
+  @apply block mb-2;
+}
+
+.list-item strong {
+  @apply font-medium;
+}
+
+.dark .list-item {
+  @apply text-gray-100;
+}

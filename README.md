@@ -12,6 +12,26 @@ Bu proje, Gemini API kullanarak geliştirilmiş bir kurumsal hukuki yapay zeka a
 - 📱 Mobil uyumlu (responsive) tasarım
 - 💾 Konuşma geçmişini saklama ve yönetme
 
+## Kanun Referans Formatı
+
+Kanun referanslarının gösterimi ve linklemesi için standart format:
+
+```
+6563 sayılı Elektronik Ticaretin Düzenlenmesi Hakkında Kanun Madde 5
+```
+
+Bu format, kanun numarası, kanun adı ve madde numarasını içerir. Bu formatta görünen tüm referanslar otomatik olarak ilgili kanun maddesine link oluşturur.
+
+Referans veri yapısı:
+```json
+{
+  "number": "6563", 
+  "name": "Elektronik Ticaretin Düzenlenmesi Hakkında Kanun", 
+  "article": "5", 
+  "text": "6563 sayılı Elektronik Ticaretin Düzenlenmesi Hakkında Kanun Madde 5" 
+}
+```
+
 ## Proje Yapısı
 
 Proje iki ana bölümden oluşmaktadır:

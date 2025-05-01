@@ -94,12 +94,15 @@ class GeminiService {
         console.log("Alternatif 1: Doğrudan istek gönderme denenecek...");
         const result = await this.directApiRequest(systemPrompt, enrichedPrompt);
         
-        // Yasal referansları çıkar
-        const legalReferences = extractLegalReferences(result.text);
+        // API yanıtını işle
+        const { cleanedText, structuredLegalReferences } = this.processApiResponse(result.text);
+        
+        // Eski yöntemle de yasal referansları çıkar (yedek olarak)
+        const fallbackReferences = extractLegalReferences(cleanedText);
         
         return {
-          text: result.text,
-          legalReferences: legalReferences
+          text: cleanedText,
+          legalReferences: structuredLegalReferences.length > 0 ? structuredLegalReferences : fallbackReferences
         };
       } catch (directApiError) {
         console.error("Doğrudan API isteği başarısız oldu, chat API'yi deneyin:", directApiError);
@@ -147,13 +150,16 @@ class GeminiService {
         const result = await chat.sendMessage(enrichedPrompt);
         const responseText = result.response.text();
         
-        // Yasal referansları çıkar
-        const legalReferences = extractLegalReferences(responseText);
+        // API yanıtını işle
+        const { cleanedText, structuredLegalReferences } = this.processApiResponse(responseText);
+        
+        // Eski yöntemle de yasal referansları çıkar (yedek olarak)
+        const fallbackReferences = extractLegalReferences(cleanedText);
         
         // Yanıtı ve meta verileri döndür
         return {
-          text: responseText,
-          legalReferences: legalReferences
+          text: cleanedText,
+          legalReferences: structuredLegalReferences.length > 0 ? structuredLegalReferences : fallbackReferences
         };
       }
     } catch (error) {
@@ -165,6 +171,176 @@ class GeminiService {
         legalReferences: [],
         error: true
       };
+    }
+  }
+
+  /**
+   * API yanıtını işler ve yapılandırılmış yasal referansları çıkarır
+   * @param {string} responseText - API yanıtı
+   * @returns {Object} - İşlenmiş yanıt ve yasal referanslar
+   */
+  processApiResponse(responseText) {
+    // JSON bölümünü ara
+    const jsonMatch = responseText.match(/```json\s*({[\s\S]*?})\s*```/);
+    let structuredLegalReferences = [];
+    let cleanedText = responseText;
+    
+    if (jsonMatch && jsonMatch[1]) {
+      try {
+        // JSON'ı parse et
+        const jsonData = JSON.parse(jsonMatch[1]);
+        
+        // Yasal referansları al
+        if (jsonData.legalReferences && Array.isArray(jsonData.legalReferences)) {
+          structuredLegalReferences = jsonData.legalReferences;
+        }
+        
+        // JSON bloğunu temizle
+        cleanedText = responseText.replace(/```json[\s\S]*?```/, '').trim();
+      } catch (error) {
+        console.error('JSON parse hatası:', error);
+        // JSON parse hatası durumunda orijinal metni koru
+      }
+    }
+    
+    // Eğer yapılandırılmış referanslar boşsa, metinden çıkarmaya çalış
+    if (structuredLegalReferences.length === 0) {
+      const { extractLegalReferences } = require('../utils/promptEngineer');
+      
+      // Metinden tüm yasal referansları çıkar
+      const textReferences = extractLegalReferences(responseText);
+      
+      // Referansları yapılandırılmış formata dönüştür
+      for (const ref of textReferences) {
+        // Kanun kısaltması ve madde formatı (örn: TMK Madde 123)
+        const codeArticleMatch = ref.match(/^(TMK|TBK|HMK|İYUK|IYUK|TTK|TCK|CMK|İİK|IIK|VUK|SGK|KVKK|TKHK|SPK|BTK|ÇK|FSEK|SK|KVK|GVK|ASK|AK)\s+Madde\s+(\d+)$/i);
+        if (codeArticleMatch) {
+          const code = codeArticleMatch[1].toUpperCase();
+          const article = codeArticleMatch[2];
+          
+          // Bilinen kanunlar sözlüğünden numarayı ve adı al
+          const lawsMap = {
+            'TMK': { number: '4721', name: 'Türk Medeni Kanunu' },
+            'TBK': { number: '6098', name: 'Türk Borçlar Kanunu' },
+            'HMK': { number: '6100', name: 'Hukuk Muhakemeleri Kanunu' },
+            'İYUK': { number: '2577', name: 'İdari Yargılama Usulü Kanunu' },
+            'IYUK': { number: '2577', name: 'İdari Yargılama Usulü Kanunu' },
+            'TTK': { number: '6102', name: 'Türk Ticaret Kanunu' },
+            'TKHK': { number: '6502', name: 'Tüketicinin Korunması Hakkında Kanun' },
+            'TCK': { number: '5237', name: 'Türk Ceza Kanunu' },
+            'CMK': { number: '5271', name: 'Ceza Muhakemesi Kanunu' },
+            'İİK': { number: '2004', name: 'İcra ve İflas Kanunu' },
+            'IIK': { number: '2004', name: 'İcra ve İflas Kanunu' },
+            'VUK': { number: '213', name: 'Vergi Usul Kanunu' },
+            'SGK': { number: '5510', name: 'Sosyal Sigortalar ve Genel Sağlık Sigortası Kanunu' },
+            'KVKK': { number: '6698', name: 'Kişisel Verilerin Korunması Kanunu' },
+            'SPK': { number: '6362', name: 'Sermaye Piyasası Kanunu' },
+            'BTK': { number: '5809', name: 'Elektronik Haberleşme Kanunu' },
+            'ÇK': { number: '4857', name: 'Çalışma Kanunu' },
+            'FSEK': { number: '5846', name: 'Fikir ve Sanat Eserleri Kanunu' },
+            'SK': { number: '7166', name: 'Sosyal Hizmetler Kanunu' },
+            'KVK': { number: '5520', name: 'Kurumlar Vergisi Kanunu' },
+            'GVK': { number: '193', name: 'Gelir Vergisi Kanunu' },
+            'ASK': { number: '5718', name: 'Milletlerarası Özel Hukuk ve Usul Hukuku Hakkında Kanun' },
+            'AK': { number: '2709', name: 'Türkiye Cumhuriyeti Anayasası' }
+          };
+          
+          if (lawsMap[code]) {
+            structuredLegalReferences.push({
+              code,
+              name: lawsMap[code].name,
+              number: lawsMap[code].number,
+              article,
+              url: `https://www.mevzuat.gov.tr/mevzuat?MevzuatNo=${lawsMap[code].number}&MevzuatTur=1&MevzuatTertip=5#MADDE_${article}`
+            });
+          }
+          continue;
+        }
+        
+        // Kanun numarası, adı ve madde formatı (örn: 6098 sayılı Türk Borçlar Kanunu Madde 123)
+        const fullLawMatch = ref.match(/^(\d{3,5})\s+sayılı\s+(.*?)\s+(?:Kanunu|Kanun)\s+Madde\s+(\d+)$/i);
+        if (fullLawMatch) {
+          const number = fullLawMatch[1];
+          const name = fullLawMatch[2];
+          const article = fullLawMatch[3];
+          
+          structuredLegalReferences.push({
+            name: name + (fullLawMatch[0].includes('Kanunu') ? ' Kanunu' : ' Kanun'),
+            number,
+            article,
+            url: `https://www.mevzuat.gov.tr/mevzuat?MevzuatNo=${number}&MevzuatTur=1&MevzuatTertip=5#MADDE_${article}`
+          });
+          continue;
+        }
+        
+        // Diğer formatları burada işleyebiliriz...
+      }
+    }
+    
+    // Tekrarlanan referansları temizle (aynı kanun ve madde numarasına sahip olanları birleştir)
+    const uniqueRefs = {};
+    for (const ref of structuredLegalReferences) {
+      const key = `${ref.code || ref.number}_${ref.article}`;
+      if (!uniqueRefs[key]) {
+        uniqueRefs[key] = ref;
+      }
+    }
+    
+    return {
+      cleanedText,
+      structuredLegalReferences: Object.values(uniqueRefs)
+    };
+  }
+  
+  /**
+   * Dilekçe içeriği oluşturma
+   * @param {string} prompt - Dilekçe promptu
+   * @returns {Object} - Oluşturulan dilekçe yanıtı
+   */
+  async generatePetitionContent(prompt) {
+    try {
+      // Gemini API ayarları
+      const generationConfig = {
+        temperature: 0.1, // Daha deterministik yanıtlar için düşük sıcaklık
+        topK: 20,
+        topP: 0.95,
+        maxOutputTokens: 8192, // Uzun içerik için yüksek token limiti
+      };
+
+      // Güvenlik ayarları
+      const safetySettings = [
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+      ];
+
+      // İçerik oluştur
+      const result = await this.model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig,
+        safetySettings,
+      });
+
+      const response = result.response;
+      return {
+        text: response.text()
+      };
+    } catch (error) {
+      console.error('Dilekçe oluşturma API hatası:', error);
+      throw new Error('Dilekçe oluşturulurken bir hata meydana geldi');
     }
   }
 

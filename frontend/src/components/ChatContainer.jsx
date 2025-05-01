@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Message from './Message';
 import LoadingIndicator from './LoadingIndicator';
-import LegalReferenceModal from './LegalReferenceModal';
 import DocumentView from './DocumentView';
 import { useChatContext } from '../contexts/ChatContext';
 
@@ -15,10 +14,6 @@ function ChatContainer() {
     messages, 
     loading, 
     handleSendMessage,
-    activeReferenceModal, 
-    referenceData, 
-    referenceLoading, 
-    closeLegalReferenceModal,
     darkMode,
     documentView
   } = useChatContext();
@@ -79,17 +74,6 @@ function ChatContainer() {
                 <li>"Boşanma davası açmak için hangi belgelere ihtiyaç var?"</li>
               </ul>
             </div>
-            <div className={`mt-4 ${darkMode ? 'bg-gray-700' : 'bg-green-50'} p-4 rounded-lg`}>
-              <h3 className={`font-medium ${darkMode ? 'text-green-300' : 'text-green-700'} mb-2`}>
-                Yeni Özellik: Belge Analizi
-              </h3>
-              <p className={`${darkMode ? 'text-gray-300' : 'text-green-600'} text-sm mb-2`}>
-                Artık PDF, Word ve resim formatında belgeler yükleyebilir ve bu belgeler hakkında sorular sorabilirsiniz.
-              </p>
-              <p className={`${darkMode ? 'text-gray-400' : 'text-green-700'} text-sm`}>
-                Sol menüden "Belgeler" sekmesine geçerek belge yüklemeyi deneyebilirsiniz.
-              </p>
-            </div>
           </div>
         </div>
       ) : (
@@ -149,16 +133,6 @@ function ChatContainer() {
           </button>
         </div>
       </form>
-      
-      {/* Yasal Referans Modalı */}
-      {activeReferenceModal && (
-        <LegalReferenceModal
-          reference={activeReferenceModal}
-          data={referenceData}
-          loading={referenceLoading}
-          onClose={closeLegalReferenceModal}
-        />
-      )}
     </div>
   );
 }
