@@ -68,7 +68,7 @@ const LegalReferenceLink = ({ reference, className = '' }) => {
     if (ref.text) {
       // Yıldız ve tırnak işaretlerini temizle
       return ref.text.replace(/[\*"]/g, '');
-    }
+    } 
     
     // Kanun numarası, ismi ve madde numarası varsa (tam format)
     if (ref.number && ref.name && ref.article) {
